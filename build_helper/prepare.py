@@ -280,68 +280,29 @@ def prepare_cfg(config: dict[str, Any],
 
     tmpdir = paths.get_tmpdir()
     dl_tasks: list[SmartDL] = []
-    if adg_arch and openwrt.get_package_config("luci-app-adguardhome") == "y":
-        logger.info("%s下载架构为%s的AdGuardHome核心", cfg_name, adg_arch)
+    if openwrt.get_package_config("luci-app-adguardhome") == "y":
+        logger.info("%s下载架构为%s的AdGuardHome核心", cfg_name)
         releases = get_gh_repo_last_releases("AdguardTeam/AdGuardHome")
-        if releases:
-            for asset in releases["assets"]:
-                if asset["name"] == f"AdGuardHome_linux_{adg_arch}.tar.gz":
-                    dl_tasks.append(dl2(asset["browser_download_url"], os.path.join(tmpdir.name, "AdGuardHome.tar.gz")))
-                    break
-            else:
-                logger.error("未找到可用的AdGuardHome二进制文件")
-
-    if clash_arch and openwrt.get_package_config("luci-app-openclash") == "y":
-        logger.info("%s下载架构为%s的OpenClash核心", cfg_name, clash_arch)
-        latest_versions = request_get("https://raw.githubusercontent.com/vernesong/OpenClash/core/master/core_version")
-        tun_v = latest_versions.splitlines()[1] if latest_versions else None
-        if tun_v:
-            dl_tasks.append(dl2(f"https://raw.githubusercontent.com/vernesong/OpenClash/core/master/premium/clash-{clash_arch}-{tun_v}.gz",
-                                os.path.join(tmpdir.name, "clash_tun.gz")))
-        dl_tasks.append(dl2(f"https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-{clash_arch}.tar.gz",
-                                os.path.join(tmpdir.name, "clash_meta.tar.gz")))
-        dl_tasks.append(dl2(f"https://raw.githubusercontent.com/vernesong/OpenClash/core/master/dev/clash-{clash_arch}.tar.gz",
-                                os.path.join(tmpdir.name, "clash.tar.gz")))
+    else:
+        logger.error("未找到可用的AdGuardHome二进制文件")
 
     wait_dl_tasks(dl_tasks)
     # 解压
     if os.path.isfile(os.path.join(tmpdir.name, "AdGuardHome.tar.gz")):
         with tarfile.open(os.path.join(tmpdir.name, "AdGuardHome.tar.gz"), "r:gz") as tar:
             if file := tar.extractfile("./AdGuardHome/AdGuardHome"):
-                with open(os.path.join(files_path, "usr", "bin", "AdGuardHome", "AdGuardHome"), "wb") as f:
+                with open(os.path.join("usr", "bin", "AdGuardHome", "AdGuardHome"), "wb") as f:
                     f.write(file.read())
-                os.chmod(os.path.join(files_path, "usr", "bin", "AdGuardHome", "AdGuardHome"), 0o755)  # noqa: S103
-
-    clash_core_path = os.path.join(files_path, "etc", "openclash", "core")
-    if not os.path.isdir(clash_core_path):
-        os.makedirs(clash_core_path)
-    if os.path.isfile(os.path.join(tmpdir.name, "clash_tun.gz")):
-        with gzip.open(os.path.join(tmpdir.name, "clash_tun.gz"), 'rb') as f_in, open(os.path.join(clash_core_path, "clash_tun"), 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-        os.chmod(os.path.join(clash_core_path, "clash_tun"), 0o755)  # noqa: S103
-
-    if os.path.isfile(os.path.join(tmpdir.name, "clash_meta.tar.gz")):
-        with tarfile.open(os.path.join(tmpdir.name, "clash_meta.tar.gz"), "r:gz") as tar:
-            if file := tar.extractfile("clash"):
-                with open(os.path.join(clash_core_path, "clash_meta"), "wb") as f:
-                    f.write(file.read())
-                os.chmod(os.path.join(clash_core_path, "clash_meta"), 0o755)  # noqa: S103
-
-    if os.path.isfile(os.path.join(tmpdir.name, "clash.tar.gz")):
-        with tarfile.open(os.path.join(tmpdir.name, "clash.tar.gz"), "r:gz") as tar:
-            if file := tar.extractfile("clash"):
-                with open(os.path.join(clash_core_path, "clash"), "wb") as f:
-                    f.write(file.read())
-                os.chmod(os.path.join(clash_core_path, "clash"), 0o755)  # noqa: S103
+                os.chmod(os.path.join("usr", "bin", "AdGuardHome", "AdGuardHome"), 0o755)  # noqa: S103
 
     tmpdir.cleanup()
 
     # 获取bt_trackers
     bt_tracker = request_get("https://github.com/XIU2/TrackersListCollection/raw/master/all_aria2.txt")
     # 替换信息
-    with open(os.path.join(files_path, "etc", "uci-defaults", "zzz-chenmozhijin"), encoding="utf-8") as f:
+    with open(os.path.join("etc", "uci-defaults", "zzz-chenmozhijin"), encoding="utf-8") as f:
         content = f.read()
-    with open(os.path.join(files_path, "etc", "uci-defaults", "zzz-chenmozhijin"), "w", encoding="utf-8") as f:
+    with open(os.path.join("etc", "uci-defaults", "zzz-chenmozhijin"), "w", encoding="utf-8") as f:
         for line in content.splitlines():
             if line.startswith("  uci set aria2.main.bt_tracker="):
                 f.write(f"  uci set aria2.main.bt_tracker='{bt_tracker}'\n")
