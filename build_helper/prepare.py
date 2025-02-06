@@ -316,6 +316,7 @@ def prepare_cfg(config: dict[str, Any],
 
     config["target"], config["subtarget"] = openwrt.get_target()
 
+    os.makedirs(os.path.join(openwrt.files, "etc"), exist_ok=True)
     with open(os.path.join(openwrt.files, "etc", "openwrt-k_info"), "w", encoding="utf-8") as f:
         content = ""
         content += f'COMPILE_START_TIME="{datetime.now(timezone(timedelta(hours=8))).strftime('%y.%m.%d-%H')}"\n'
