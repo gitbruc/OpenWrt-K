@@ -166,7 +166,7 @@ def prepare(configs: dict[str, dict[str, Any]]) -> None:
     tasks = []
     for cfg_name, openwrt in openwrts.items():
         config = configs[cfg_name]
-        tasks.append((config, cfg_name, openwrt, cloned_repos, global_files_path))
+        tasks.append((config, cfg_name, openwrt, cloned_repos))
     with Pool(len(cfg_names)) as p:
         for cfg_name, config, tar_path in p.starmap(prepare_cfg, tasks):
             configs[cfg_name] = config
@@ -177,9 +177,8 @@ def prepare(configs: dict[str, dict[str, Any]]) -> None:
 def prepare_cfg(config: dict[str, Any],
                 cfg_name: str,
                 openwrt: OpenWrt,
-                cloned_repos: dict[tuple[str, str], str],
-                global_files_path: str) -> tuple[str, dict[str, Any], str]:
-
+                cloned_repos: dict[tuple[str, str], str]) -> tuple[str, dict[str, Any], str]:
+    
     logger.info("%s开始更新feeds...", cfg_name)
     openwrt.feed_update()
 
@@ -278,38 +277,6 @@ def prepare_cfg(config: dict[str, Any],
         shutil.copytree(os.path.join(turboacc_dir, f"nftables-{nftables_ver}"),
                         os.path.join(openwrt.path, "package", "network", "utils", "nftables"))
 
-    logger.info("%s准备自定义文件...", cfg_name)
-    files_path = os.path.join(openwrt.path, "files")
-    shutil.copytree(global_files_path, files_path)
-    arch, version = openwrt.get_arch()
-    match arch:
-        case "i386":
-            adg_arch, clash_arch = "386", "linux-386"
-        case "i686":
-            adg_arch, clash_arch = "386", None
-        case "x86_64":
-            adg_arch, clash_arch = "amd64", "linux-amd64"
-        case "mipsel":
-            adg_arch, clash_arch = "mipsel", "linux-mipsle-softfloat"
-        case "mips64el":
-            adg_arch, clash_arch = "mips64el", None
-        case "mips":
-            adg_arch, clash_arch = "mips", "linux-mips-softfloat"
-        case "mips64":
-            adg_arch, clash_arch = "mips64", "linux-mips64"
-        case "arm":
-            if version:
-                adg_arch, clash_arch = f"arm{version}", f"linux-arm{version}"
-            else:
-                adg_arch, clash_arch = "armv5", "linux-armv5"
-        case "aarch64":
-            adg_arch, clash_arch = "arm64", "linux-arm64"
-        case "powerpc":
-            adg_arch, clash_arch = "powerpc", None
-        case "powerpc64":
-            adg_arch, clash_arch = "ppc64", None
-        case _:
-            adg_arch, clash_arch = None, None
 
     tmpdir = paths.get_tmpdir()
     dl_tasks: list[SmartDL] = []
